@@ -6,7 +6,7 @@
 <title>KRABURI</title>
 
 <!-- ===================== ตั้งค่า: วางลิงก์แอพ Google ของคุณ (ลงท้าย /exec) ระหว่างเครื่องหมายคำพูด ===================== -->
-<script>window.APP_URL = "https://script.google.com/macros/s/AKfycbwXwhRcV14TURLOIgeDRn8HiYnm-PbSritIWApfbXQFJXNgGn141bds8P202ZdJTkUe/exec";</script>
+<script>window.APP_URL = "วางลิงก์ /exec ตรงนี้";</script>
 <!-- ======================================================================================================== -->
 
 <link rel="manifest" href="manifest.webmanifest">
@@ -19,7 +19,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <style>
   html,body{margin:0;height:100%;overflow:hidden;overscroll-behavior:none;position:fixed;inset:0;width:100%;background:#14315a;font-family:system-ui,-apple-system,"Sarabun",sans-serif;color:#fff}
-  #app{position:fixed;left:0;right:0;bottom:0;top:env(safe-area-inset-top);width:100%;height:calc(100% - env(safe-area-inset-top));border:0;background:#14315a}
+  #app{position:fixed;left:0;right:0;bottom:0;top:env(safe-area-inset-top);width:1px;min-width:100%;max-width:100%;height:calc(100% - env(safe-area-inset-top));border:0;background:#14315a}
   #splash{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;transition:opacity .3s}
   #splash img{width:140px;height:auto}
   #splash p{margin:0;color:#c9d6ea;font-size:15px}
@@ -52,7 +52,7 @@
   // เปิดแอพแบบเต็มจอในหน้านี้ (ไอคอนและชื่อบนหน้าจอหลักจะเป็นของหน้านี้)
   var f = document.createElement("iframe");
   f.id = "app"; f.title = "H.T.M.S.KRABURI";
-  f.allow = "clipboard-write; camera";
+  f.allow = "clipboard-write; camera"; f.setAttribute("scrolling","no");
   f.src = url;
   f.onload = function(){ var s = document.getElementById("splash"); s.style.opacity = 0; setTimeout(function(){ s.style.display = "none"; }, 300); };
   document.body.appendChild(f);
