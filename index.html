@@ -5,9 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>KRABURI</title>
 
-<!-- ===================== ตั้งค่า: วางลิงก์แอพ Google ของคุณ (ลงท้าย /exec) ระหว่างเครื่องหมายคำพูด ===================== -->
-<script>window.APP_URL = "https://script.google.com/macros/s/AKfycbwXwhRcV14TURLOIgeDRn8HiYnm-PbSritIWApfbXQFJXNgGn141bds8P202ZdJTkUe/exec";</script>
-<!-- ======================================================================================================== -->
+<script src="config.js"></script>
 
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
@@ -28,6 +26,11 @@
   @keyframes go{0%{transform:translateX(-100%)}100%{transform:translateX(260%)}}
   #err{display:none;max-width:320px;text-align:center;line-height:1.5;padding:0 20px}
   #err a{color:#f59e0b}
+  #pm{position:fixed;inset:0;z-index:50;background:rgba(10,20,40,.62);display:none;align-items:center;justify-content:center;padding:24px}
+  #pm .c{background:#fff;color:#1b1f24;border-radius:20px;padding:22px 20px;max-width:330px;width:100%;text-align:center}
+  #pm h2{margin:0 0 8px;font-size:19px} #pm p{margin:0 0 18px;font-size:15px;line-height:1.55;color:#5b6472}
+  #pm button{display:block;width:100%;border:0;border-radius:14px;font:inherit;font-size:16px;padding:14px;margin-top:8px}
+  #pm .go{background:#1f4e8c;color:#fff;font-weight:700} #pm .no{background:#eef1f5;color:#1b1f24}
   @media (prefers-reduced-motion:reduce){.bar i{animation:none}}
 </style>
 </head>
@@ -46,7 +49,7 @@
     document.querySelector(".bar").style.display = "none";
     document.getElementById("msg").textContent = "ยังไม่ได้ตั้งค่าลิงก์แอพ";
     err.style.display = "block";
-    err.innerHTML = "ผู้ดูแลระบบ: เปิดไฟล์ index.html แล้ววางลิงก์ Web App ที่ลงท้ายด้วย /exec ในบรรทัด APP_URL";
+    err.innerHTML = "ผู้ดูแลระบบ: เปิดไฟล์ config.js แล้ววางลิงก์ Web App ที่ลงท้ายด้วย /exec ในบรรทัด APP_URL";
     return;
   }
   // เปิดแอพแบบเต็มจอในหน้านี้ (ไอคอนและชื่อบนหน้าจอหลักจะเป็นของหน้านี้)
@@ -64,7 +67,57 @@
     }
   }, 20000);
 })();
-if ("serviceWorker" in navigator) { navigator.serviceWorker.register("sw.js").catch(function(){}); }
+</script>
+<div id="pm" role="dialog" aria-modal="true" aria-labelledby="pmt"><div class="c"><h2 id="pmt">เปิดการแจ้งเตือน</h2><p>รับแจ้งเตือนบนมือถือเมื่อมีงานใหม่ ความเห็น หรือใกล้ครบกำหนด แม้ไม่ได้เปิดแอพ</p><button class="go" id="pmgo">เปิดการแจ้งเตือน</button><button class="no" id="pmno">ไว้ทีหลัง</button></div></div>
+<script>
+/* ===================== แจ้งเตือนมือถือ (Firebase Cloud Messaging) ===================== */
+(function(){
+  var swReady = ("serviceWorker" in navigator) ? navigator.serviceWorker.register("sw.js").then(function(){ return navigator.serviceWorker.ready; }).catch(function(){ return null; }) : Promise.resolve(null);
+  var ua = navigator.userAgent || "";
+  var IOS = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  var STANDALONE = !!navigator.standalone || (window.matchMedia && matchMedia("(display-mode: standalone)").matches);
+  function supported(){ return ("serviceWorker" in navigator) && ("PushManager" in window) && ("Notification" in window) && !!window.FIREBASE_CONFIG && !!window.VAPID_KEY; }
+  function perm(){ try{ return Notification.permission; }catch(e){ return "default"; } }
+  var fbp = null;
+  function loadFb(){
+    if (fbp) return fbp;
+    function add(u){ return new Promise(function(ok,no){ var x=document.createElement("script"); x.src=u; x.onload=ok; x.onerror=function(){ no(new Error("โหลดบริการแจ้งเตือนไม่ได้ ตรวจอินเทอร์เน็ต")); }; document.head.appendChild(x); }); }
+    var v = "https://www.gstatic.com/firebasejs/10.12.2/";
+    fbp = add(v+"firebase-app-compat.js").then(function(){ return add(v+"firebase-messaging-compat.js"); }).catch(function(e){ fbp=null; throw e; });
+    return fbp;
+  }
+  function getTok(){
+    return Promise.all([loadFb(), swReady]).then(function(r){
+      if (!r[1]) throw new Error("เปิดบริการแจ้งเตือนในเครื่องไม่ได้");
+      if (!firebase.apps.length) firebase.initializeApp(window.FIREBASE_CONFIG);
+      return firebase.messaging().getToken({vapidKey: window.VAPID_KEY, serviceWorkerRegistration: r[1]});
+    });
+  }
+  var pm = document.getElementById("pm"), pending = null;
+  function reply(src, o){ try{ o.kb = 1; src.postMessage(o, "*"); }catch(e){} }
+  document.getElementById("pmno").onclick = function(){ pm.style.display = "none"; if (pending) reply(pending, {t:"cancel"}); pending = null; };
+  document.getElementById("pmgo").onclick = function(){
+    var src = pending; pm.style.display = "none"; pending = null; if (!src) return;
+    Notification.requestPermission().then(function(p){
+      if (p !== "granted") { reply(src, {t:"denied"}); return; }
+      return getTok().then(function(t){ reply(src, {t:"token", token:t}); });
+    }).catch(function(e){ reply(src, {t:"error", msg: (e && e.message) || "เปิดการแจ้งเตือนไม่สำเร็จ"}); });
+  };
+  window.addEventListener("message", function(e){
+    if (!/^https:\/\/script\.google\.com$|\.googleusercontent\.com$/.test(e.origin)) return;
+    var m = e.data; if (!m || m.kb !== 1) return;
+    var src = e.source;
+    if (m.t === "hello") {
+      reply(src, {t:"ready", supported: supported(), perm: perm(), standalone: STANDALONE, ios: IOS});
+      if (supported() && perm() === "granted") getTok().then(function(t){ reply(src, {t:"token", token:t}); }).catch(function(){});
+    } else if (m.t === "enable") {
+      if (!supported()) { reply(src, {t:"error", msg:"เครื่องนี้ยังเปิดการแจ้งเตือนไม่ได้"}); return; }
+      pending = src; pm.style.display = "flex"; document.getElementById("pmgo").focus();
+    } else if (m.t === "disable") {
+      (supported() ? getTok().then(function(){ return firebase.messaging().deleteToken(); }) : Promise.resolve()).catch(function(){}).then(function(){ reply(src, {t:"off"}); });
+    }
+  });
+})();
 </script>
 </body>
 </html>
