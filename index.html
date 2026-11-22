@@ -53,6 +53,7 @@
     return;
   }
   // เปิดแอพแบบเต็มจอในหน้านี้ (ไอคอนและชื่อบนหน้าจอหลักจะเป็นของหน้านี้)
+  try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (x) {}   // ขอให้เครื่องเก็บข้อมูลล็อกอินไว้ถาวร
   var f = document.createElement("iframe");
   f.id = "app"; f.title = "H.T.M.S.KRABURI";
   f.allow = "clipboard-write; camera"; f.setAttribute("scrolling","no");
