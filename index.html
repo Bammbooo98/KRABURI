@@ -113,6 +113,142 @@
       // แอพของ Google ซ้อนอยู่ในกรอบชั้นที่ 2 จึงเทียบกับ iframe ตรงๆ ไม่ได้ · กันคนนอกด้วย: หน้านี้ต้องเป็นหน้าบนสุด และข้อความต้องไม่มาจากหน้าที่เปิดเรามา
       if (!af || window.parent !== window || src === window || (window.opener && src === window.opener)) return;
       if (m.t === "gettok") { var v = ""; try { v = localStorage.getItem("kraburi-tok") || ""; } catch (x) {} reply(src, {t:"tok", v:v}); }
+      else if (m.t === "tokset") { try { var tv = String(m.v || ""); if (/^[A-Za-z0-9_\-.]{20,200}$/.test(tv)) localStorage.setItem("kraburi-tok", tv); else localStorage.removeItem("kraburi-tok"); reply(src, {t:"tokok", saved: !!localStorage.getItem("kraburi-tok")}); } catch (x) {} }
+      else { af.src = af.src; }
+      return;
+    }
+    if (m.t === "hello") {
+      reply(src, {t:"ready", supported: supported(), perm: perm(), standalone: STANDALONE, ios: IOS});
+      if (supported() && perm() === "granted") getTok().then(function(t){ reply(src, {t:"token", token:t}); }).catch(function(){});
+    } else if (m.t === "enable") {
+      if (!supported()) { reply(src, {t:"error", msg:"เครื่องนี้ยังเปิดการแจ้งเตือนไม่ได้"}); return; }
+      pending = src; pm.style.display = "flex"; document.getElementById("pmgo").focus();
+    } else if (m.t === "badge") {
+      var n = Math.max(0, Math.min(99, parseInt(m.n, 10) || 0));
+      try { if (n > 0 && navigator.setAppBadge) navigator.setAppBadge(n); else if (navigator.clearAppBadge) navigator.clearAppBadge(); } catch (x) {}
+      try { if (window.caches) caches.open("kraburi-badge").then(function(c){ return c.put("/__badge", new Response(String(n))); }); } catch (x) {}
+    } else if (m.t === "disable") {
+      (supported() ? getTok().then(function(){ return firebase.messaging().deleteToken(); }) : Promise.resolve()).catch(function(){}).then(function(){ reply(src, {t:"off"}); });
+    }
+  });
+})();
+</script>
+</body>
+</html><!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>KRABURI</title>
+
+<script src="config.js"></script>
+
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="theme-color" content="#14315a">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="KRABURI">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<style>
+  html,body{margin:0;height:100%;overflow:hidden;overscroll-behavior:none;position:fixed;inset:0;width:100%;background:#14315a;font-family:system-ui,-apple-system,"Sarabun",sans-serif;color:#fff}
+  #app{position:fixed;left:0;right:0;bottom:0;top:env(safe-area-inset-top);width:1px;min-width:100%;max-width:100%;height:calc(100% - env(safe-area-inset-top));border:0;background:#14315a}
+  #splash{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;transition:opacity .3s}
+  #splash img{width:140px;height:auto}
+  #splash p{margin:0;color:#c9d6ea;font-size:15px}
+  .bar{width:120px;height:4px;border-radius:4px;background:rgba(255,255,255,.2);overflow:hidden}
+  .bar i{display:block;width:40%;height:100%;background:#f59e0b;border-radius:4px;animation:go 1.1s infinite ease-in-out}
+  @keyframes go{0%{transform:translateX(-100%)}100%{transform:translateX(260%)}}
+  #err{display:none;max-width:320px;text-align:center;line-height:1.5;padding:0 20px}
+  #err a{color:#f59e0b}
+  #pm{position:fixed;inset:0;z-index:50;background:rgba(10,20,40,.62);display:none;align-items:center;justify-content:center;padding:24px}
+  #pm .c{background:#fff;color:#1b1f24;border-radius:20px;padding:22px 20px;max-width:330px;width:100%;text-align:center}
+  #pm h2{margin:0 0 8px;font-size:19px} #pm p{margin:0 0 18px;font-size:15px;line-height:1.55;color:#5b6472}
+  #pm button{display:block;width:100%;border:0;border-radius:14px;font:inherit;font-size:16px;padding:14px;margin-top:8px}
+  #pm .go{background:#1f4e8c;color:#fff;font-weight:700} #pm .no{background:#eef1f5;color:#1b1f24}
+  @media (prefers-reduced-motion:reduce){.bar i{animation:none}}
+</style>
+</head>
+<body>
+<div id="splash">
+  <img src="icon-512.png" alt="ตราเรือหลวงกระบุรี">
+  <div class="bar" aria-hidden="true"><i></i></div>
+  <p id="msg">กำลังเปิด H.T.M.S.KRABURI…</p>
+  <div id="err"></div>
+</div>
+<script>
+(function(){
+  var url = (window.APP_URL || "").trim();
+  var err = document.getElementById("err");
+  if (!/^https:\/\/script\.google\.com\/macros\/s\/[^/]+\/exec/.test(url)) {
+    document.querySelector(".bar").style.display = "none";
+    document.getElementById("msg").textContent = "ยังไม่ได้ตั้งค่าลิงก์แอพ";
+    err.style.display = "block";
+    err.innerHTML = "ผู้ดูแลระบบ: เปิดไฟล์ config.js แล้ววางลิงก์ Web App ที่ลงท้ายด้วย /exec ในบรรทัด APP_URL";
+    return;
+  }
+  // เปิดแอพแบบเต็มจอในหน้านี้ (ไอคอนและชื่อบนหน้าจอหลักจะเป็นของหน้านี้)
+  try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (x) {}   // ขอให้เครื่องเก็บข้อมูลล็อกอินไว้ถาวร
+  var f = document.createElement("iframe");
+  f.id = "app"; f.title = "H.T.M.S.KRABURI";
+  f.allow = "clipboard-write; camera"; f.setAttribute("scrolling","no");
+  f.src = url;
+  f.onload = function(){ var s = document.getElementById("splash"); s.style.opacity = 0; setTimeout(function(){ s.style.display = "none"; }, 300); };
+  document.body.appendChild(f);
+  // ถ้าโหลดไม่ขึ้นใน 20 วินาที ให้ทางเลือกเปิดตรง
+  setTimeout(function(){
+    if (document.getElementById("splash").style.display !== "none") {
+      err.style.display = "block";
+      err.innerHTML = 'โหลดนานผิดปกติ <a href="' + url + '">แตะที่นี่เพื่อเปิดแอพโดยตรง</a>';
+    }
+  }, 20000);
+})();
+</script>
+<div id="pm" role="dialog" aria-modal="true" aria-labelledby="pmt"><div class="c"><h2 id="pmt">เปิดการแจ้งเตือน</h2><p>รับแจ้งเตือนบนมือถือเมื่อมีงานใหม่ ความเห็น หรือใกล้ครบกำหนด แม้ไม่ได้เปิดแอพ</p><button class="go" id="pmgo">เปิดการแจ้งเตือน</button><button class="no" id="pmno">ไว้ทีหลัง</button></div></div>
+<script>
+/* ===================== แจ้งเตือนมือถือ (Firebase Cloud Messaging) ===================== */
+(function(){
+  var swReady = ("serviceWorker" in navigator) ? navigator.serviceWorker.register("sw.js").then(function(){ return navigator.serviceWorker.ready; }).catch(function(){ return null; }) : Promise.resolve(null);
+  var ua = navigator.userAgent || "";
+  var IOS = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  var STANDALONE = !!navigator.standalone || (window.matchMedia && matchMedia("(display-mode: standalone)").matches);
+  function supported(){ return ("serviceWorker" in navigator) && ("PushManager" in window) && ("Notification" in window) && !!window.FIREBASE_CONFIG && !!window.VAPID_KEY; }
+  function perm(){ try{ return Notification.permission; }catch(e){ return "default"; } }
+  var fbp = null;
+  function loadFb(){
+    if (fbp) return fbp;
+    function add(u){ return new Promise(function(ok,no){ var x=document.createElement("script"); x.src=u; x.onload=ok; x.onerror=function(){ no(new Error("โหลดบริการแจ้งเตือนไม่ได้ ตรวจอินเทอร์เน็ต")); }; document.head.appendChild(x); }); }
+    var v = "https://www.gstatic.com/firebasejs/10.12.2/";
+    fbp = add(v+"firebase-app-compat.js").then(function(){ return add(v+"firebase-messaging-compat.js"); }).catch(function(e){ fbp=null; throw e; });
+    return fbp;
+  }
+  function getTok(){
+    return Promise.all([loadFb(), swReady]).then(function(r){
+      if (!r[1]) throw new Error("เปิดบริการแจ้งเตือนในเครื่องไม่ได้");
+      if (!firebase.apps.length) firebase.initializeApp(window.FIREBASE_CONFIG);
+      return firebase.messaging().getToken({vapidKey: window.VAPID_KEY, serviceWorkerRegistration: r[1]});
+    });
+  }
+  var pm = document.getElementById("pm"), pending = null;
+  function reply(src, o){ try{ o.kb = 1; src.postMessage(o, "*"); }catch(e){} }
+  document.getElementById("pmno").onclick = function(){ pm.style.display = "none"; if (pending) reply(pending, {t:"cancel"}); pending = null; };
+  document.getElementById("pmgo").onclick = function(){
+    var src = pending; pm.style.display = "none"; pending = null; if (!src) return;
+    Notification.requestPermission().then(function(p){
+      if (p !== "granted") { reply(src, {t:"denied"}); return; }
+      return getTok().then(function(t){ reply(src, {t:"token", token:t}); });
+    }).catch(function(e){ reply(src, {t:"error", msg: (e && e.message) || "เปิดการแจ้งเตือนไม่สำเร็จ"}); });
+  };
+  window.addEventListener("message", function(e){
+    if (!/^https:\/\/script\.google\.com$|\.googleusercontent\.com$/.test(e.origin)) return;
+    var m = e.data; if (!m || m.kb !== 1) return;
+    var src = e.source;
+    var af = document.getElementById("app");
+    if (m.t === "gettok" || m.t === "tokset" || m.t === "reload") {
+      // แอพของ Google ซ้อนอยู่ในกรอบชั้นที่ 2 จึงเทียบกับ iframe ตรงๆ ไม่ได้ · กันคนนอกด้วย: หน้านี้ต้องเป็นหน้าบนสุด และข้อความต้องไม่มาจากหน้าที่เปิดเรามา
+      if (!af || window.parent !== window || src === window || (window.opener && src === window.opener)) return;
+      if (m.t === "gettok") { var v = ""; try { v = localStorage.getItem("kraburi-tok") || ""; } catch (x) {} reply(src, {t:"tok", v:v}); }
       else if (m.t === "tokset") { try { var tv = String(m.v || ""); if (/^[A-Za-z0-9_\-.]{20,200}$/.test(tv)) localStorage.setItem("kraburi-tok", tv); else localStorage.removeItem("kraburi-tok"); } catch (x) {} }
       else { af.src = af.src; }
       return;
