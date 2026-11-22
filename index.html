@@ -113,6 +113,10 @@
     } else if (m.t === "enable") {
       if (!supported()) { reply(src, {t:"error", msg:"เครื่องนี้ยังเปิดการแจ้งเตือนไม่ได้"}); return; }
       pending = src; pm.style.display = "flex"; document.getElementById("pmgo").focus();
+    } else if (m.t === "badge") {
+      var n = Math.max(0, Math.min(99, parseInt(m.n, 10) || 0));
+      try { if (n > 0 && navigator.setAppBadge) navigator.setAppBadge(n); else if (navigator.clearAppBadge) navigator.clearAppBadge(); } catch (x) {}
+      try { if (window.caches) caches.open("kraburi-badge").then(function(c){ return c.put("/__badge", new Response(String(n))); }); } catch (x) {}
     } else if (m.t === "disable") {
       (supported() ? getTok().then(function(){ return firebase.messaging().deleteToken(); }) : Promise.resolve()).catch(function(){}).then(function(){ reply(src, {t:"off"}); });
     }
