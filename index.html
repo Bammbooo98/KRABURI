@@ -110,7 +110,8 @@
     var src = e.source;
     var af = document.getElementById("app");
     if (m.t === "gettok" || m.t === "tokset" || m.t === "reload") {
-      if (!af || src !== af.contentWindow) return;      // รับเฉพาะจากแอพของเราเท่านั้น
+      // แอพของ Google ซ้อนอยู่ในกรอบชั้นที่ 2 จึงเทียบกับ iframe ตรงๆ ไม่ได้ · กันคนนอกด้วย: หน้านี้ต้องเป็นหน้าบนสุด และข้อความต้องไม่มาจากหน้าที่เปิดเรามา
+      if (!af || window.parent !== window || src === window || (window.opener && src === window.opener)) return;
       if (m.t === "gettok") { var v = ""; try { v = localStorage.getItem("kraburi-tok") || ""; } catch (x) {} reply(src, {t:"tok", v:v}); }
       else if (m.t === "tokset") { try { var tv = String(m.v || ""); if (/^[A-Za-z0-9_\-.]{20,200}$/.test(tv)) localStorage.setItem("kraburi-tok", tv); else localStorage.removeItem("kraburi-tok"); } catch (x) {} }
       else { af.src = af.src; }
