@@ -107,6 +107,14 @@
     if (!/^https:\/\/script\.google\.com$|\.googleusercontent\.com$/.test(e.origin)) return;
     var m = e.data; if (!m || m.kb !== 1) return;
     var src = e.source;
+    var af = document.getElementById("app");
+    if (m.t === "gettok" || m.t === "tokset" || m.t === "reload") {
+      if (!af || src !== af.contentWindow) return;      // รับเฉพาะจากแอพของเราเท่านั้น
+      if (m.t === "gettok") { var v = ""; try { v = localStorage.getItem("kraburi-tok") || ""; } catch (x) {} reply(src, {t:"tok", v:v}); }
+      else if (m.t === "tokset") { try { var tv = String(m.v || ""); if (/^[A-Za-z0-9_\-.]{20,200}$/.test(tv)) localStorage.setItem("kraburi-tok", tv); else localStorage.removeItem("kraburi-tok"); } catch (x) {} }
+      else { af.src = af.src; }
+      return;
+    }
     if (m.t === "hello") {
       reply(src, {t:"ready", supported: supported(), perm: perm(), standalone: STANDALONE, ios: IOS});
       if (supported() && perm() === "granted") getTok().then(function(t){ reply(src, {t:"token", token:t}); }).catch(function(){});
